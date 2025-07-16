@@ -27,39 +27,54 @@ const TopProperties = (props: TopPropertiesProps) => {
 	const [topProperties, setTopProperties] = useState<Property[]>([]);
 
 	/** APOLLO REQUESTS **/
-	const [likeTargetProperty] = useMutation(LIKE_TARGET_PROPERTY);
-	const {
-		loading: getPropertiesLoading,
-		data: getPropertiesData,
-		error: getPropertiesError,
-		refetch: getPropertiesRefetch,
-	} = useQuery(GET_PROPERTIES, {
-		fetchPolicy: 'cache-and-network',
-		variables: { input: initialInput },
-		notifyOnNetworkStatusChange: true,
-		onCompleted: (data: T) => {
-			setTopProperties(data?.getProperties?.list);
-		},
-	});
+// LIKE_TARGET_PROPERTY mutatsiyasini ishlatish uchun hook chaqiryapmiz
+const [likeTargetProperty] = useMutation(LIKE_TARGET_PROPERTY); //datani doistruct qilamiz
 
-	/** HANDLERS **/
-	const likePropertyHandler = async (user: T, id: string) => {
-		try {
-			if (!id) return;
-			if (!user._id) throw new Error(Message.NOT_AUTHENTICATED);
+// GET_PROPERTIES query orqali backenddan property ro‘yxatini olyapmiz
+const {
+	loading: getPropertiesLoading, // ma’lumotlar yuklanayotganini bildiradi (true/false)
+	data: getPropertiesData, // backenddan kelgan property ro‘yxati
+	error: getPropertiesError, // xatolik yuz bersa shu yerga tushadi
+	refetch: getPropertiesRefetch, // queryni qaytadan ishga tushirish uchun funksiya
+} = useQuery(GET_PROPERTIES, {
+	fetchPolicy: 'cache-and-network', // avval cache'dan, keyin serverdan olib keladi
+	variables: { input: initialInput }, // queryga yuboriladigan input (filter, page va h.k.)
+	notifyOnNetworkStatusChange: true, // tarmoq holati o‘zgarsa komponent qayta render bo‘ladi
+	onCompleted: (data: T) => {
+		// query muvaffaqiyatli tugasa, kelgan listni statega saqlaymiz
+		setTopProperties(data?.getProperties?.list);
+	},
+});
 
-			await likeTargetProperty({
-				variables: { input: id },
-			});
+/** HANDLERS **/
 
-			await getPropertiesRefetch({ input: initialInput });
+// like bosilganda ishlaydigan funksiya
+const likePropertyHandler = async (user: T, id: string) => {
+	try {
+		// agar id yo‘q bo‘lsa, funksiyani to‘xtatamiz
+		if (!id) return;
 
-			await sweetTopSmallSuccessAlert('success', 800);
-		} catch (err: any) {
-			console.log('Error, likePropertyHandler', err.message);
-			sweetMixinErrorAlert(err.message).then();
-		}
-	};
+		// agar user login qilmagan bo‘lsa, xatolik chiqaramiz
+		if (!user._id) throw new Error(Message.NOT_AUTHENTICATED);
+
+		// backendga like mutation yuboramiz
+		await likeTargetProperty({
+			variables: { input: id }, // mutation uchun input sifatida property ID yuboramiz
+		});
+
+		// like'dan keyin yangilangan ro‘yxatni qayta olib kelamiz
+		await getPropertiesRefetch({ input: initialInput });
+
+		// muvaffaqiyatli tugaganini foydalanuvchiga bildiruvchi alert
+		await sweetTopSmallSuccessAlert('success', 800);
+	} catch (err: any) {
+		// agar xatolik bo‘lsa, konsolga chiqaramiz
+		console.log('Error, likePropertyHandler', err.message);
+
+		// foydalanuvchiga xatolik haqida alert ko‘rsatamiz
+		sweetMixinErrorAlert(err.message).then();
+	}
+};
 
 	if (device === 'mobile') {
 		return (

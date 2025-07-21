@@ -39,23 +39,56 @@ const AgentList: NextPage = ({ initialInput, ...props }: any) => {
 	const [searchText, setSearchText] = useState<string>('');
 
 	/** APOLLO REQUESTS **/
+	// Mutation yaratamiz, LIKE_TARGET_MEMBER - bu oldindan yozilgan GraphQL mutation query
 	const [likeTargetMember] = useMutation(LIKE_TARGET_MEMBER);
+
+	// Queryni bajarish uchun useQuery chaqiramiz va natijalarni destructuring qilamiz
 	const {
-		loading: getAgentsLoading,
-		data: getAgentsData,
-		error: getAgentsError,
-		refetch: getAgentsRefetch,
-	} = useQuery(GET_AGENTS, {
-		fetchPolicy: 'network-only',
+		loading: getAgentsLoading,      // Query bajarilayotganda true bo'ladi
+		data: getAgentsData,             // Serverdan olingan ma'lumotlar shu o'zgaruvchida saqlanadi
+		error: getAgentsError,           // Agar so'rovda xatolik bo'lsa, shu o'zgaruvchi mavjud bo'ladi
+		refetch: getAgentsRefetch,       // Queryni qayta qo'lda bajarish uchun funktsiya
+	} = useQuery(GET_AGENTS, {          // GET_AGENTS - oldindan yozilgan GraphQL query
+		
+		// Ma'lumot har doim tarmoqdan olinadi, brauzer yoki cache-dan emas
+		fetchPolicy: 'cache-and-network',    
+		
+		// Queryga o'tadigan parametrlar (bu yerda qidiruv filtri)
 		variables: { input: searchFilter },
+		
+		// Tarmoq holati o'zgarganda (loading, refetch) komponentni qayta render qiladi
 		notifyOnNetworkStatusChange: true,
+		
+		// Query muvaffaqiyatli yakunlanganda chaqiriladigan funksiya
 		onCompleted: (data: T) => {
-			setAgents(data?.getAgents?.list);
-			setTotal(data?.getAgents?.metaCounter[0]?.total);
+			console.log('✅ 백엔드에서 받은 데이터:', data);
+			console.log('✅ 에이전트 리스트:', data?.getAgents?.list);
+			console.log('✅ 총 개수:', data?.getAgents?.metaCounter[0]?.total);
+			
+			// Kelgan ma'lumotlardan agentlar ro'yxatini statega yozamiz
+			setAgents(data?.getAgents?.list || []);
+			// Agentlar soni yoki boshqa statistikani statega o'rnatamiz
+			setTotal(data?.getAgents?.metaCounter[0]?.total || 0);
+		},
+		
+		// Query xatolik bilan yakunlanganda chaqiriladigan funksiya
+		onError: (error) => {
+			console.error('❌ 백엔드 요청 오류:', error);
+			console.error('❌ GraphQL 오류:', error.graphQLErrors);
+			console.error('❌ 네트워크 오류:', error.networkError);
+			sweetMixinErrorAlert(error.message).then();
 		},
 	});
+
 	/** LIFECYCLES **/
 	useEffect(() => {
+		// 디버깅: 환경 변수와 설정 확인
+		console.log('🔍 환경 변수 확인:');
+		console.log('- REACT_APP_API_GRAPHQL_URL:', process.env.REACT_APP_API_GRAPHQL_URL);
+		console.log('- REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+		console.log('- REACT_APP_API_WS:', process.env.REACT_APP_API_WS);
+		console.log('🔍 현재 검색 필터:', searchFilter);
+		
 		if (router.query.input) {
 			const input_obj = JSON.parse(router?.query?.input as string);
 			setSearchFilter(input_obj);
@@ -128,6 +161,24 @@ const AgentList: NextPage = ({ initialInput, ...props }: any) => {
 	if (device === 'mobile') {
 		return <h1>AGENTS PAGE MOBILE</h1>;
 	} else {
+		// 로딩 상태 표시
+		if (getAgentsLoading) {
+			return (
+				<Stack className={'agent-list-page'} justifyContent="center" alignItems="center" sx={{ minHeight: '50vh' }}>
+					<div>로딩 중...</div>
+				</Stack>
+			);
+		}
+
+		// 에러 상태 표시
+		if (getAgentsError) {
+			return (
+				<Stack className={'agent-list-page'} justifyContent="center" alignItems="center" sx={{ minHeight: '50vh' }}>
+					<div>에러가 발생했습니다: {getAgentsError.message}</div>
+				</Stack>
+			);
+		}
+
 		return (
 			<Stack className={'agent-list-page'}>
 				<Stack className={'container'}>

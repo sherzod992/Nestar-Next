@@ -14,6 +14,7 @@ import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import { MembersInquiry } from '../../../libs/types/member/member.input';
 import { Member } from '../../../libs/types/member/member';
 import { MemberStatus, MemberType } from '../../../libs/enums/member.enum';
+import { Direction } from '../../../libs/enums/common.enum';
 import { sweetErrorHandling } from '../../../libs/sweetAlert';
 import { MemberUpdate } from '../../../libs/types/member/member.update';
 import { UPDATE_MEMBER_BY_ADMIN } from '../../../apollo/admin/mutation';
@@ -26,9 +27,7 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 	const [membersInquiry, setMembersInquiry] = useState<MembersInquiry>(initialInquiry);
 	const [members, setMembers] = useState<Member[]>([]);
 	const [membersTotal, setMembersTotal] = useState<number>(0);
-	const [value, setValue] = useState(
-		membersInquiry?.search?.memberStatus ? membersInquiry?.search?.memberStatus : 'ALL',
-	);
+	const [value, setValue] = useState('ALL');
 	const [searchText, setSearchText] = useState('');
 	const [searchType, setSearchType] = useState('ALL');
 
@@ -44,8 +43,18 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 		variables: { input: membersInquiry },
 		notifyOnNetworkStatusChange: true,
 		onCompleted: (data: T) => {
+			console.log('GraphQL Success - Data:', data);
 			setMembers(data?.getAllMembersByAdmin?.list);
 			setMembersTotal(data?.getAllMembersByAdmin?.metaCounter[0]?.total ?? 0);
+		},
+		onError: (error: any) => {
+			console.log('=== GRAPHQL ERROR DETAILS ===');
+			console.log('GraphQL Variables:', JSON.stringify({ input: membersInquiry }, null, 2));
+			console.log('GraphQL Error:', error);
+			console.log('Error Extensions:', error.extensions);
+			console.log('Original Error:', error.extensions?.originalError);
+			console.log('Error Message Array:', error.extensions?.originalError?.message);
+			console.log('=== END ERROR DETAILS ===');
 		},
 	});
 
@@ -80,7 +89,7 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 		setValue(newValue);
 		setSearchText('');
 
-		setMembersInquiry({ ...membersInquiry, page: 1, sort: 'createdAt' });
+		setMembersInquiry({ ...membersInquiry, page: 1 });
 
 		switch (newValue) {
 			case 'ACTIVE':
@@ -125,6 +134,7 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 		try {
 			setMembersInquiry({
 				...membersInquiry,
+				page: 1,
 				search: {
 					...membersInquiry.search,
 					text: searchText,
@@ -143,7 +153,6 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 				setMembersInquiry({
 					...membersInquiry,
 					page: 1,
-					sort: 'createdAt',
 					search: {
 						...membersInquiry.search,
 						memberType: newValue as MemberType,
@@ -169,7 +178,7 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 						<Box component={'div'}>
 							<List className={'tab-menu'}>
 								<ListItem
-									onClick={(e:any) => tabChangeHandler(e, 'ALL')}
+									onClick={(e: any) => tabChangeHandler(e, 'ALL')}
 									value="ALL"
 									className={value === 'ALL' ? 'li on' : 'li'}
 								>
@@ -278,7 +287,12 @@ AdminUsers.defaultProps = {
 		page: 1,
 		limit: 10,
 		sort: 'createdAt',
-		search: {},
+		direction: Direction.DESC,
+		search: {
+			memberStatus: undefined,
+			memberType: undefined,
+			text: undefined,
+		},
 	},
 };
 

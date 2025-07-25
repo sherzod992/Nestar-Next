@@ -24,7 +24,7 @@ import { REACT_APP_API_URL } from "../../../config";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Typography from "@mui/material/Typography";
 import { BoardArticleStatus } from "../../../enums/board-article.enum";
-
+console.log("data", );
 interface Data {
   category: string;
   title: string;

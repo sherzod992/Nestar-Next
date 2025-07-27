@@ -14,7 +14,6 @@ import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
 import { MembersInquiry } from '../../../libs/types/member/member.input';
 import { Member } from '../../../libs/types/member/member';
 import { MemberStatus, MemberType } from '../../../libs/enums/member.enum';
-import { Direction } from '../../../libs/enums/common.enum';
 import { sweetErrorHandling } from '../../../libs/sweetAlert';
 import { MemberUpdate } from '../../../libs/types/member/member.update';
 import { UPDATE_MEMBER_BY_ADMIN } from '../../../apollo/admin/mutation';
@@ -24,7 +23,13 @@ import { T } from '../../../libs/types/common';
 
 const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 	const [anchorEl, setAnchorEl] = useState<[] | HTMLElement[]>([]);
-	const [membersInquiry, setMembersInquiry] = useState<MembersInquiry>(initialInquiry);
+	const [membersInquiry, setMembersInquiry] = useState<MembersInquiry>({
+		page: 1,
+		limit: 3,
+		search: {
+			text: "",  // text는 필수 필드이므로 빈 문자열로 초기화
+		},
+	});
 	const [members, setMembers] = useState<Member[]>([]);
 	const [membersTotal, setMembersTotal] = useState<number>(0);
 	const [value, setValue] = useState('ALL');
@@ -93,17 +98,16 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 
 		switch (newValue) {
 			case 'ACTIVE':
-				setMembersInquiry({ ...membersInquiry, search: { memberStatus: MemberStatus.ACTIVE } });
+				setMembersInquiry({ ...membersInquiry, search: { memberStatus: MemberStatus.ACTIVE, text: "" } });
 				break;
 			case 'BLOCK':
-				setMembersInquiry({ ...membersInquiry, search: { memberStatus: MemberStatus.BLOCK } });
+				setMembersInquiry({ ...membersInquiry, search: { memberStatus: MemberStatus.BLOCK, text: "" } });
 				break;
 			case 'DELETE':
-				setMembersInquiry({ ...membersInquiry, search: { memberStatus: MemberStatus.DELETE } });
+				setMembersInquiry({ ...membersInquiry, search: { memberStatus: MemberStatus.DELETE, text: "" } });
 				break;
 			default:
-				delete membersInquiry?.search?.memberStatus;
-				setMembersInquiry({ ...membersInquiry });
+				setMembersInquiry({ ...membersInquiry, search: { text: "" } });
 				break;
 		}
 	};
@@ -156,11 +160,17 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 					search: {
 						...membersInquiry.search,
 						memberType: newValue as MemberType,
+						text: searchText || "",  // text 필드 유지
 					},
 				});
 			} else {
-				delete membersInquiry?.search?.memberType;
-				setMembersInquiry({ ...membersInquiry });
+				setMembersInquiry({
+					...membersInquiry,
+					page: 1,
+					search: {
+						text: searchText || "",  // text 필드만 유지
+					},
+				});
 			}
 		} catch (err: any) {
 			console.log('searchTypeHandler: ', err.message);
@@ -285,13 +295,9 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
 AdminUsers.defaultProps = {
 	initialInquiry: {
 		page: 1,
-		limit: 10,
-		sort: 'createdAt',
-		direction: Direction.DESC,
+		limit: 3,
 		search: {
-			memberStatus: undefined,
-			memberType: undefined,
-			text: undefined,
+			text: "",  // text는 필수 필드이므로 빈 문자열로 초기화
 		},
 	},
 };

@@ -15,7 +15,7 @@ export interface LoginInput {
 }
 
 interface AISearch {
-	text?: string;
+	text: string;  // 필수 필드로 변경 (백엔드 DTO와 일치)
 }
 
 export interface AgentsInquiry {
@@ -29,7 +29,7 @@ export interface AgentsInquiry {
 interface MISearch {
 	memberStatus?: MemberStatus;
 	memberType?: MemberType;
-	text?: string;
+	text: string;  // 필수 필드로 변경 (백엔드 DTO와 일치)
 }
 
 export interface MembersInquiry {

@@ -94,19 +94,19 @@ const AdminUsers: NextPage = ({ initialInquiry, ...props }: any) => {
       case "ACTIVE":
         setMembersInquiry({
           ...membersInquiry,
-          search: { memberStatus: MemberStatus.ACTIVE },
+          search: { memberStatus: MemberStatus.ACTIVE, text: "" },
         });
         break;
       case "BLOCK":
         setMembersInquiry({
           ...membersInquiry,
-          search: { memberStatus: MemberStatus.BLOCK },
+          search: { memberStatus: MemberStatus.BLOCK, text: "" },
         });
         break;
       case "DELETE":
         setMembersInquiry({
           ...membersInquiry,
-          search: { memberStatus: MemberStatus.DELETE },
+          search: { memberStatus: MemberStatus.DELETE, text: "" },
         });
         break;
       default:
@@ -315,7 +315,7 @@ AdminUsers.defaultProps = {
     page: 1,
     limit: 10,
     sort: "createdAt",
-    search: {},
+    search: { text: "" },
   },
 };
 

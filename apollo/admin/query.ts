@@ -5,37 +5,39 @@ import { gql } from "@apollo/client";
  *************************/
 
 export const GET_ALL_MEMBERS_BY_ADMIN = gql`
-  query GetAllMembersByAdmin($input: MembersInquiry!) {
+query getAllMembersByAdmin($input: MembersInquiry!) {
     getAllMembersByAdmin(input: $input) {
-      list {
-        _id
-        memberType
-        memberStatus
-        memberAuthType
-        memberPhone
-        memberNick
-        memberFullName
-        memberImage
-        memberAddress
-        memberDesc
-        memberWarnings
-        memberBlocks
-        memberProperties
-        memberRank
-        memberArticles
-        memberPoints
-        memberLikes
-        memberViews
-        deletedAt
-        createdAt
-        updatedAt
-        accessToken
-      }
-      metaCounter {
-        total
-      }
+        list {
+            _id
+            memberType
+            memberStatus
+            memberAuthType
+            memberPhone
+            memberNick
+            memberFullName
+            memberImage
+            memberAddress
+            memberDesc
+            memberProperties
+            memberArticles
+            memberFollowers
+            memberLikes
+            memberComments
+            memberRank
+            memberViews
+            memberWarnings
+            memberBlocks
+            deletedAt
+            createdAt
+            updatedAt
+            accessToken
+        }
+        metaCounter {
+            total
+        }
     }
-  }
+}
+
 `;
 
 /**************************

@@ -34,8 +34,8 @@ interface MISearch {
 
 export interface MembersInquiry {
 	page: number;
-	limit?: number;
+	limit: number;
 	sort?: string;
 	direction?: Direction;
-	search?: MISearch;
+	search: MISearch;
 }

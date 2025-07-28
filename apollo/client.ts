@@ -1,13 +1,21 @@
-import { useMemo } from 'react';
-import { ApolloClient, ApolloLink, InMemoryCache, split, from, NormalizedCacheObject } from '@apollo/client';
-import createUploadLink from 'apollo-upload-client/public/createUploadLink.js';
-import { WebSocketLink } from '@apollo/client/link/ws';
-import { getMainDefinition } from '@apollo/client/utilities';
-import { onError } from '@apollo/client/link/error';
-import { getJwtToken } from '../libs/auth';
-import { TokenRefreshLink } from 'apollo-link-token-refresh';
-import { sweetErrorAlert } from '../libs/sweetAlert';
-import { socketVar } from './store';
+import { useMemo } from "react";
+import {
+  ApolloClient,
+  ApolloLink,
+  InMemoryCache,
+  split,
+  from,
+  NormalizedCacheObject,
+} from "@apollo/client";
+import { createUploadLink } from "apollo-upload-client";
+import { WebSocketLink } from "@apollo/client/link/ws";
+import { getMainDefinition } from "@apollo/client/utilities";
+import { onError } from "@apollo/client/link/error";
+import { getJwtToken } from "../libs/auth";
+import { TokenRefreshLink } from "apollo-link-token-refresh";
+import { sweetErrorAlert } from "../libs/sweetAlert";
+import { socketVar } from "./store";
+
 let apolloClient: ApolloClient<NormalizedCacheObject>;
 
 function getHeaders() {
@@ -29,29 +37,39 @@ const tokenRefreshLink = new TokenRefreshLink({
 	},
 });
 
-// Custom WebSocket client
-class LoggingWebSocket {
+// Custom WebSocket client for Chat
+class ChatWebSocket {
 	private socket: WebSocket;
 
 	constructor(url: string) {
-		this.socket = new WebSocket(`${url}?token=${getJwtToken()}`);
+		const token = getJwtToken();
+		const wsUrl = token ? `${url}?token=${token}` : url;
+		this.socket = new WebSocket(wsUrl);
 		socketVar(this.socket);
 
 		this.socket.onopen = () => {
-			console.log('WebSocket connection!');
+			console.log('✅ Chat WebSocket 연결됨!');
 		};
 
 		this.socket.onmessage = (msg) => {
-			console.log('WebSocket message:', msg.data);
+			console.log('📨 Chat WebSocket 메시지:', msg.data);
 		};
 
 		this.socket.onerror = (error) => {
-			console.log('WebSocket, error:', error);
+			console.error('❌ Chat WebSocket 오류:', error);
+		};
+
+		this.socket.onclose = () => {
+			console.log('🔌 Chat WebSocket 연결 종료');
 		};
 	}
 
 	send(data: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView) {
-		this.socket.send(data);
+		if (this.socket.readyState === WebSocket.OPEN) {
+			this.socket.send(data);
+		} else {
+			console.error('❌ WebSocket이 연결되지 않았습니다');
+		}
 	}
 
 	close() {
@@ -59,8 +77,17 @@ class LoggingWebSocket {
 	}
 }
 
+// Initialize Chat WebSocket when client is created
+let chatWebSocket: ChatWebSocket | null = null;
+
 function createIsomorphicLink() {
 	if (typeof window !== 'undefined') {
+		// Initialize Chat WebSocket
+		if (!chatWebSocket && process.env.REACT_APP_API_WS) {
+			const chatWsUrl = process.env.REACT_APP_API_WS.replace('/graphql', '/chat');
+			chatWebSocket = new ChatWebSocket(chatWsUrl);
+		}
+
 		const authLink = new ApolloLink((operation, forward) => {
 			operation.setContext(({ headers = {} }) => ({
 				headers: {
@@ -79,29 +106,34 @@ function createIsomorphicLink() {
 
 		/* WEBSOCKET SUBSCRIPTION LINK */
 		const wsLink = new WebSocketLink({
-			uri: process.env.REACT_APP_API_WS ?? 'ws://127.0.0.1:3007',
+			uri: process.env.REACT_APP_API_WS ?? 'ws://127.0.0.1:3007/graphql',
 			options: {
-				reconnect: false,
-				timeout: 30000,
-				connectionParams: () => {
-					return { headers: getHeaders() };
-				},
+				reconnect: true,
+				connectionParams: () => ({
+					Authorization: `Bearer ${getJwtToken()}`
+				}),
 			},
-			webSocketImpl: LoggingWebSocket,
 		});
+		const errorLink = onError(({ graphQLErrors, networkError }) => {
+  if (graphQLErrors?.length) {
+    graphQLErrors.forEach(({ message, locations, path }) => {
+      console.log(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
+      
+      // Agar message undefined bo‘lsa, ishlatmaslik
+      if (message && !message.includes("input")) {
+        sweetErrorAlert(message);
+      }
+    });
+  }
 
-		const errorLink = onError(({ graphQLErrors, networkError, response }) => {
-			if (graphQLErrors) {
-				graphQLErrors.map(({ message, locations, path, extensions }) => {
-					console.log(`[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`);
-					if (!message.includes('input')) sweetErrorAlert(message);
-				});
-			}
-			if (networkError) console.log(`[Network error]: ${networkError}`);
-			// @ts-ignore
-			if (networkError?.statusCode === 401) {
-			}
-		});
+  if (networkError) {
+    console.log(`[Network error]: ${networkError}`);
+    // @ts-ignore
+    if (networkError?.statusCode === 401) {
+      // Token xatosi bo‘lsa shu yerda ishlov beriladi
+    }
+  }
+});
 
 		const splitLink = split(
 			({ query }) => {
@@ -137,20 +169,3 @@ export function initializeApollo(initialState = null) {
 export function useApollo(initialState: any) {
 	return useMemo(() => initializeApollo(initialState), [initialState]);
 }
-
-/**
-import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
-
-// No Subscription required for develop process
-
-const httpLink = createHttpLink({
-  uri: "http://localhost:3007/graphql",
-});
-
-const client = new ApolloClient({
-  link: httpLink,
-  cache: new InMemoryCache(),
-});
-
-export default client;
-*/

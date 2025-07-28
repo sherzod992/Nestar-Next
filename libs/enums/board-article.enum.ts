@@ -7,5 +7,5 @@ export enum BoardArticleCategory {
 
 export enum BoardArticleStatus {
 	ACTIVE = 'ACTIVE',
-	DELETE = 'DELETE',
+	DELETE = 'DELATE', 
 }

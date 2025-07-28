@@ -37,39 +37,29 @@ const tokenRefreshLink = new TokenRefreshLink({
 	},
 });
 
-// Custom WebSocket client for Chat
-class ChatWebSocket {
+// Custom WebSocket client
+class LoggingWebSocket {
 	private socket: WebSocket;
 
 	constructor(url: string) {
-		const token = getJwtToken();
-		const wsUrl = token ? `${url}?token=${token}` : url;
-		this.socket = new WebSocket(wsUrl);
+		this.socket = new WebSocket(`${url}?token=${getJwtToken()}`);
 		socketVar(this.socket);
 
 		this.socket.onopen = () => {
-			console.log('✅ Chat WebSocket 연결됨!');
+			console.log('WebSocket connection!');
 		};
 
 		this.socket.onmessage = (msg) => {
-			console.log('📨 Chat WebSocket 메시지:', msg.data);
+			console.log('WebSocket message:', msg.data);
 		};
 
 		this.socket.onerror = (error) => {
-			console.error('❌ Chat WebSocket 오류:', error);
-		};
-
-		this.socket.onclose = () => {
-			console.log('🔌 Chat WebSocket 연결 종료');
+			console.log('WebSocket, error:', error);
 		};
 	}
 
 	send(data: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView) {
-		if (this.socket.readyState === WebSocket.OPEN) {
-			this.socket.send(data);
-		} else {
-			console.error('❌ WebSocket이 연결되지 않았습니다');
-		}
+		this.socket.send(data);
 	}
 
 	close() {
@@ -77,17 +67,8 @@ class ChatWebSocket {
 	}
 }
 
-// Initialize Chat WebSocket when client is created
-let chatWebSocket: ChatWebSocket | null = null;
-
 function createIsomorphicLink() {
 	if (typeof window !== 'undefined') {
-		// Initialize Chat WebSocket
-		if (!chatWebSocket && process.env.REACT_APP_API_WS) {
-			const chatWsUrl = process.env.REACT_APP_API_WS.replace('/graphql', '/chat');
-			chatWebSocket = new ChatWebSocket(chatWsUrl);
-		}
-
 		const authLink = new ApolloLink((operation, forward) => {
 			operation.setContext(({ headers = {} }) => ({
 				headers: {
@@ -106,14 +87,15 @@ function createIsomorphicLink() {
 
 		/* WEBSOCKET SUBSCRIPTION LINK */
 		const wsLink = new WebSocketLink({
-			uri: process.env.REACT_APP_API_WS ?? 'ws://127.0.0.1:3007/graphql',
-			options: {
-				reconnect: true,
-				connectionParams: () => ({
-					Authorization: `Bearer ${getJwtToken()}`
-				}),
-			},
-		});
+  uri: process.env.REACT_APP_API_WS ?? 'ws://127.0.0.1:3007/graphql',
+  options: {
+    reconnect: true,
+    connectionParams: () => ({
+      Authorization: `Bearer ${getJwtToken()}`
+    }),
+  },
+  // webSocketImpl qo‘lda berilmaydi → default browser WebSocket ishlatiladi
+});
 		const errorLink = onError(({ graphQLErrors, networkError }) => {
   if (graphQLErrors?.length) {
     graphQLErrors.forEach(({ message, locations, path }) => {

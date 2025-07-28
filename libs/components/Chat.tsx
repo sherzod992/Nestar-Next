@@ -73,21 +73,34 @@ const Chat = () => {
   socket.onmessage = (msg) => {
     try {
       const data = JSON.parse(msg.data);
-      console.log('Websocket message:', data);
+      console.log('📨 WebSocket 메시지 수신:', data);
+
+      // 메시지 타입 검증
+      if (!data || typeof data !== 'object') {
+        console.warn('⚠️ 잘못된 메시지 형식:', data);
+        return;
+      }
 
       switch (data.event) {
         case 'info':
-          setOnlineUsers(data.totalClients);
+          console.log('👥 온라인 사용자 정보:', data);
+          setOnlineUsers(data.totalClients || 0);
           break;
         case 'getMessages':
-          setMessagesList(data.list);
+          console.log('💬 메시지 목록 수신:', data.list);
+          setMessagesList(data.list || []);
           break;
         case 'message':
+          console.log('💭 새 메시지 수신:', data);
           setMessagesList((prev) => [...prev, data]);
+          break;
+        default:
+          console.warn('⚠️ 알 수 없는 메시지 타입:', data.event, data);
           break;
       }
     } catch (e) {
-      console.error('WebSocket parse error:', e);
+      console.error('❌ WebSocket 메시지 파싱 오류:', e);
+      console.error('❌ 원본 메시지:', msg.data);
     }
   };
 }, [socket]); 
@@ -127,10 +140,23 @@ const Chat = () => {
   };
 
   const onClickHandler = () => {
-    if (!messageInput) sweetErrorAlert(Messages.error4);
-    else {
+    if (!messageInput) {
+      sweetErrorAlert(Messages.error4);
+      return;
+    }
+    
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      console.warn('⚠️ WebSocket이 연결되지 않았습니다.');
+      sweetErrorAlert('채팅 서버에 연결되지 않았습니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+    
+    try {
       socket.send(JSON.stringify({ event: "message", data: messageInput }));
       setMessageInput("");
+    } catch (error) {
+      console.error('❌ 메시지 전송 오류:', error);
+      sweetErrorAlert('메시지 전송에 실패했습니다.');
     }
   };
 
@@ -143,7 +169,14 @@ const Chat = () => {
       ) : null}
       <Stack className={`chat-frame ${open ? "open" : ""}`}>
         <Box className={"chat-top"} component={"div"}>
-          <div style={{ fontFamily: "Nunito" }}>Online Chat</div>
+          <div style={{ fontFamily: "Nunito" }}>
+            Online Chat
+            {socket && socket.readyState === WebSocket.OPEN ? (
+              <span style={{ color: '#4caf50', fontSize: '12px', marginLeft: '8px' }}>● 연결됨</span>
+            ) : (
+              <span style={{ color: '#f44336', fontSize: '12px', marginLeft: '8px' }}>● 연결 안됨</span>
+            )}
+          </div>
           <RippleBadge
             style={{ margin: "-18px 0 0 21px" }}
             badgeContent={onlineUsers}
